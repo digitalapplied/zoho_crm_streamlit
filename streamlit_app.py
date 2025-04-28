@@ -218,7 +218,9 @@ with st.sidebar:
                 if not effective_creds: st.stop()
 
                 with st.spinner(f"Fetching leads from CV {cvid_input} (All pages: {fetch_all_pages})..."):
-                    token = get_access_token(**effective_creds)
+                    # Filter creds for token fetch
+                    token_creds = {k: v for k, v in effective_creds.items() if k in ['client_id', 'client_secret', 'refresh_token', 'accounts_url']}
+                    token = get_access_token(**token_creds)
                     fetched_leads = fetch_leads_by_cvid(
                         token, cvid_input.strip(),
                         api_domain=effective_creds['api_domain'],
@@ -328,10 +330,14 @@ if st.session_state.get('execute_update', False):
         effective_creds = get_effective_credentials()
         if not effective_creds: st.stop()
 
-        results = bulk_update(rows_to_process, progress_hook=progress_hook, **effective_creds)
-        # Ensure progress bar reaches 100% even if hook didn't run for last chunk due to errors
-        prog_container.progress(1.0, text="Update process complete!")
+        # Filter creds for token fetch - needed if bulk_update doesn't handle it
+        # Although bulk_update calls get_access_token itself, passing only necessary args is safer
+        token_creds = {k: v for k, v in effective_creds.items() if k in ['client_id', 'client_secret', 'refresh_token', 'accounts_url']}
+        # Note: The current bulk_update function re-fetches the token internally.
+        # This filtering might be redundant if bulk_update is robust, but belt-and-suspenders approach.
 
+        results = bulk_update(rows_to_process, progress_hook=progress_hook, **effective_creds)
+        prog_container.progress(1.0, text="Update process complete!")
     except Exception as exc:
         st.error(f"Critical Failure during bulk update initiation or processing: {exc}")
         logging.exception("Bulk update process failed critically")
@@ -409,7 +415,9 @@ if fetch_fields_btn:
             if not effective_creds: st.stop()
 
             with st.spinner(f"Fetching fields for {MODULE_API_NAME} module..."):
-                token = get_access_token(**effective_creds)
+                # Filter creds for token fetch
+                token_creds = {k: v for k, v in effective_creds.items() if k in ['client_id', 'client_secret', 'refresh_token', 'accounts_url']}
+                token = get_access_token(**token_creds)
                 fields_data = get_module_fields(token, module=MODULE_API_NAME, api_domain=effective_creds['api_domain'])
 
             if fields_data:
